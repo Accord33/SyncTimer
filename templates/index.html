@@ -13,210 +13,129 @@
     </script>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            background: #f5f5f5;
+            color: #333;
         }
         
         .container {
             background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 30px;
             text-align: center;
-            width: 100%;
-            max-width: 500px;
         }
         
         h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            margin: 0 0 30px 0;
+            font-size: 1.8em;
+            font-weight: normal;
         }
         
         .timer-display {
-            font-size: 4em;
-            font-weight: bold;
-            color: #667eea;
-            margin: 30px 0;
-            font-family: 'Courier New', monospace;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .timer-controls {
-            margin: 30px 0;
+            font-size: 3em;
+            font-family: monospace;
+            margin: 20px 0;
+            color: #333;
         }
         
         .time-input {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 15px;
             margin: 20px 0;
-            flex-wrap: wrap;
         }
         
         .time-input input {
-            width: 80px;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
+            width: 60px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             text-align: center;
-            font-size: 1.2em;
+            font-size: 1em;
         }
         
         .time-input label {
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 5px;
-            font-weight: bold;
-            color: #555;
+            font-size: 0.9em;
         }
         
         .button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007cba;
             color: white;
             border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 1.1em;
-            font-weight: bold;
-            margin: 5px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin: 3px;
+            font-size: 0.9em;
         }
         
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-        
-        .button:active {
-            transform: translateY(0);
+        .button:hover:not(:disabled) {
+            background: #005a8b;
         }
         
         .button:disabled {
             background: #ccc;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
         
         .status {
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: bold;
+            margin: 15px 0;
+            padding: 10px;
+            font-size: 0.9em;
         }
         
         .status.running {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #e8f5e8;
+            color: #2d5a2d;
         }
         
         .status.paused {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            background: #fff8e1;
+            color: #8a6914;
         }
         
         .status.stopped {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #ffeaea;
+            color: #8b2635;
         }
         
         .status.finished {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        
-        .connection-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-        
-        .connection-status.connected {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .connection-status.disconnected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        @media (max-width: 600px) {
-            .container {
-                margin: 10px;
-                padding: 20px;
-            }
-            
-            .timer-display {
-                font-size: 2.5em;
-            }
-            
-            h1 {
-                font-size: 2em;
-            }
-            
-            .time-input {
-                flex-direction: column;
-                align-items: center;
-            }
+            background: #e3f2fd;
+            color: #1565c0;
         }
     </style>
 </head>
 <body>
-    <div class="connection-status" id="connectionStatus">接続中...</div>
-    
     <div class="container">
-        <h1>🕒 共有タイマー</h1>
+        <h1>タイマー</h1>
         
         <div class="timer-display" id="timerDisplay">00:00</div>
         
         <div class="status" id="statusDisplay">停止中</div>
         
-        <div class="timer-controls">
-            <div class="time-input">
-                <label>
-                    <input type="number" id="minutesInput" min="0" max="59" value="5">
-                    分
-                </label>
-                <label>
-                    <input type="number" id="secondsInput" min="0" max="59" value="0">
-                    秒
-                </label>
-            </div>
-            
-            <div>
-                <button class="button" id="startBtn" onclick="startTimer()">開始</button>
-                <button class="button" id="pauseBtn" onclick="pauseTimer()" disabled>一時停止</button>
-                <button class="button" id="resumeBtn" onclick="resumeTimer()" disabled>再開</button>
-                <button class="button" id="stopBtn" onclick="stopTimer()" disabled>停止</button>
-            </div>
+        <div class="time-input">
+            <label>
+                <input type="number" id="minutesInput" min="0" max="59" value="5">
+                分
+            </label>
+            <label>
+                <input type="number" id="secondsInput" min="0" max="59" value="0">
+                秒
+            </label>
+        </div>
+        
+        <div>
+            <button class="button" id="startBtn" onclick="startTimer()">開始</button>
+            <button class="button" id="pauseBtn" onclick="pauseTimer()" disabled>一時停止</button>
+            <button class="button" id="resumeBtn" onclick="resumeTimer()" disabled>再開</button>
+            <button class="button" id="stopBtn" onclick="stopTimer()" disabled>停止</button>
         </div>
     </div>
 
@@ -234,17 +153,13 @@
             remainingTime: 0
         };
         
-        // 接続状態の管理
-        const connectionStatus = document.getElementById('connectionStatus');
-        
+        // 接続状態の管理（シンプルなコンソールログのみ）
         socket.on('connect', function() {
-            connectionStatus.textContent = '✅ 接続済み';
-            connectionStatus.className = 'connection-status connected';
+            console.log('Connected to server');
         });
         
         socket.on('disconnect', function() {
-            connectionStatus.textContent = '❌ 切断';
-            connectionStatus.className = 'connection-status disconnected';
+            console.log('Disconnected from server');
         });
         
         // タイマー更新
