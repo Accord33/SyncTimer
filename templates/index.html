@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>共有タイマー</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // フォールバック: メインCDNが失敗した場合の代替CDN
+        if (typeof io === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .timer-display {
+            font-size: 4em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .timer-controls {
+            margin: 30px 0;
+        }
+        
+        .time-input {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .time-input input {
+            width: 80px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+        
+        .time-input label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .status.running {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.paused {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.stopped {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.finished {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .timer-display {
+                font-size: 2.5em;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .time-input {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">接続中...</div>
+    
+    <div class="container">
+        <h1>🕒 共有タイマー</h1>
+        
+        <div class="timer-display" id="timerDisplay">00:00</div>
+        
+        <div class="status" id="statusDisplay">停止中</div>
+        
+        <div class="timer-controls">
+            <div class="time-input">
+                <label>
+                    <input type="number" id="minutesInput" min="0" max="59" value="5">
+                    分
+                </label>
+                <label>
+                    <input type="number" id="secondsInput" min="0" max="59" value="0">
+                    秒
+                </label>
+            </div>
+            
+            <div>
+                <button class="button" id="startBtn" onclick="startTimer()">開始</button>
+                <button class="button" id="pauseBtn" onclick="pauseTimer()" disabled>一時停止</button>
+                <button class="button" id="resumeBtn" onclick="resumeTimer()" disabled>再開</button>
+                <button class="button" id="stopBtn" onclick="stopTimer()" disabled>停止</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IOの読み込み確認
+        if (typeof io === 'undefined') {
+            alert('Socket.IOライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+            throw new Error('Socket.IO library failed to load');
+        }
+        
+        const socket = io();
+        
+        let timerState = {
+            isRunning: false,
+            remainingTime: 0
+        };
+        
+        // 接続状態の管理
+        const connectionStatus = document.getElementById('connectionStatus');
+        
+        socket.on('connect', function() {
+            connectionStatus.textContent = '✅ 接続済み';
+            connectionStatus.className = 'connection-status connected';
+        });
+        
+        socket.on('disconnect', function() {
+            connectionStatus.textContent = '❌ 切断';
+            connectionStatus.className = 'connection-status disconnected';
+        });
+        
+        // タイマー更新
+        socket.on('timer_update', function(data) {
+            timerState.remainingTime = data.remaining_time;
+            timerState.isRunning = data.is_running;
+            updateDisplay();
+            updateButtons();
+        });
+        
+        // タイマー開始
+        socket.on('timer_started', function(data) {
+            timerState.isRunning = true;
+            timerState.remainingTime = data.remaining_time;
+            updateDisplay();
+            updateButtons();
+            updateStatus('実行中', 'running');
+        });
+        
+        // タイマー停止
+        socket.on('timer_stopped', function() {
+            timerState.isRunning = false;
+            timerState.remainingTime = 0;
+            updateDisplay();
+            updateButtons();
+            updateStatus('停止中', 'stopped');
+        });
+        
+        // タイマー一時停止
+        socket.on('timer_paused', function(data) {
+            timerState.isRunning = false;
+            timerState.remainingTime = data.remaining_time;
+            updateDisplay();
+            updateButtons();
+            updateStatus('一時停止中', 'paused');
+        });
+        
+        // タイマー再開
+        socket.on('timer_resumed', function(data) {
+            timerState.isRunning = true;
+            timerState.remainingTime = data.remaining_time;
+            updateDisplay();
+            updateButtons();
+            updateStatus('実行中', 'running');
+        });
+        
+        // タイマー終了
+        socket.on('timer_finished', function() {
+            timerState.isRunning = false;
+            timerState.remainingTime = 0;
+            updateDisplay();
+            updateButtons();
+            updateStatus('🎉 時間です！', 'finished');
+            
+            // 通知音やアラート（ブラウザの通知機能）
+            if (Notification.permission === 'granted') {
+                new Notification('タイマー終了！', {
+                    body: '設定した時間が経過しました。',
+                    icon: '/favicon.ico'
+                });
+            }
+            
+            // 簡単なアラート音
+            playAlertSound();
+        });
+        
+        function updateDisplay() {
+            const minutes = Math.floor(timerState.remainingTime / 60);
+            const seconds = Math.floor(timerState.remainingTime % 60);
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+        }
+        
+        function updateButtons() {
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (timerState.isRunning) {
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                resumeBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else if (timerState.remainingTime > 0) {
+                startBtn.disabled = true;
+                pauseBtn.disabled = true;
+                resumeBtn.disabled = false;
+                stopBtn.disabled = false;
+            } else {
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                resumeBtn.disabled = true;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        function updateStatus(text, className) {
+            const statusDisplay = document.getElementById('statusDisplay');
+            statusDisplay.textContent = text;
+            statusDisplay.className = `status ${className}`;
+        }
+        
+        function startTimer() {
+            const minutes = parseInt(document.getElementById('minutesInput').value) || 0;
+            const seconds = parseInt(document.getElementById('secondsInput').value) || 0;
+            
+            if (minutes === 0 && seconds === 0) {
+                alert('時間を設定してください');
+                return;
+            }
+            
+            socket.emit('start_timer', {
+                minutes: minutes,
+                seconds: seconds
+            });
+        }
+        
+        function pauseTimer() {
+            socket.emit('pause_timer');
+        }
+        
+        function resumeTimer() {
+            socket.emit('resume_timer');
+        }
+        
+        function stopTimer() {
+            socket.emit('stop_timer');
+        }
+        
+        function playAlertSound() {
+            // Web APIを使用してビープ音を生成
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 1);
+        }
+        
+        // 通知の許可を求める
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+        
+        // 初期状態の更新
+        updateDisplay();
+        updateButtons();
+    </script>
+</body>
+</html>
