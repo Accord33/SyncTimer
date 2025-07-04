@@ -3,7 +3,7 @@ services:
   synctimer:
     build: .
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
