@@ -4,21 +4,7 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-    environment:
-      - FLASK_ENV=development
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-
-# 本番環境用の設定
-  synctimer-prod:
-    build: .
-    ports:
-      - "8000:8000"
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-    profiles:
-      - production
