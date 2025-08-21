@@ -5,18 +5,16 @@ FROM python:3.13-slim
 WORKDIR /app
 
 # システムパッケージの更新と必要なパッケージのインストール
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
 
 # 依存関係ファイルをコピー
-COPY requirements.txt pyproject.toml ./
+COPY requirements.txt ./
 
 # Pythonの依存関係をインストール
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションファイルをコピー
-COPY . .
+COPY ./app .
 
 # ポート8000を公開
 EXPOSE 8000
