@@ -3,8 +3,5 @@ services:
   synctimer:
     build: .
     ports:
-      - "8001:8000"
-    environment:
-      - FLASK_ENV=production
-      - PYTHONUNBUFFERED=1
+      - "8000:8000"
     restart: unless-stopped
