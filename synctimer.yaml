@@ -49,7 +49,7 @@ metadata:
 spec:
   ingressClassName: cloudflare-tunnel
   rules:
-  - host: synctimer.accord33.org
+  - host: synctimer-test.accord33.org
     http:
       paths:
       - path: /
