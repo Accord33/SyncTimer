@@ -10,7 +10,7 @@ metadata:
   name: synctimer-deployment
   namespace: synctimer
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: synctimer
