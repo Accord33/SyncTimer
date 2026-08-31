@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 import secrets
 import threading
 import time
@@ -13,6 +14,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # 部屋ごとのタイマー状態。現在の構成は単一プロセスでの利用を想定する。
 ROOM_IDLE_TIMEOUT = 60 * 60
 ROOM_CLEANUP_INTERVAL = 60
+MAX_TIMER_DURATION = 24 * 60 * 60
+ROOM_ID_PATTERN = re.compile(r'^[0-9a-f]{16}$')
 rooms = {}
 rooms_lock = threading.RLock()
 
@@ -35,12 +38,6 @@ def create_room():
     with rooms_lock:
         rooms[room_id] = new_room_state()
     return room_id
-
-
-def get_or_create_room(room_id):
-    """指定された部屋を取得し、存在しなければ作成する。"""
-    with rooms_lock:
-        return rooms.setdefault(room_id, new_room_state())
 
 
 def cleanup_rooms(now=None):
@@ -68,7 +65,27 @@ def room_update(state):
 
 
 def current_room_id():
-    return request.args.get('room_id')
+    room_id = request.args.get('room_id')
+    if room_id and ROOM_ID_PATTERN.fullmatch(room_id):
+        return room_id
+    return None
+
+
+def parse_duration(data):
+    """入力値を検証し、秒数に変換する。不正値はNoneを返す。"""
+    try:
+        minutes = int(data.get('minutes', 0))
+        seconds = int(data.get('seconds', 0))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+    if minutes < 0 or seconds < 0 or seconds > 59:
+        return None
+
+    duration = minutes * 60 + seconds
+    if duration <= 0 or duration > MAX_TIMER_DURATION:
+        return None
+    return duration
 
 
 def timer_thread():
@@ -118,6 +135,8 @@ def index():
 @app.route('/room/<room_id>')
 def room(room_id):
     """指定された共有タイマーを表示する。"""
+    if not ROOM_ID_PATTERN.fullmatch(room_id):
+        abort(404)
     with rooms_lock:
         state = rooms.get(room_id)
         if state is None:
@@ -164,12 +183,17 @@ def handle_start_timer(data):
     if not room_id:
         return
 
-    minutes = max(0, int(data.get('minutes', 0)))
-    seconds = max(0, int(data.get('seconds', 0)))
-    duration = minutes * 60 + seconds
+    duration = parse_duration(data)
+    if duration is None:
+        emit('timer_error', {
+            'message': 'タイマーは1秒以上24時間以内で設定してください。',
+        })
+        return
 
     with rooms_lock:
-        state = get_or_create_room(room_id)
+        state = rooms.get(room_id)
+        if state is None:
+            return
         state['duration'] = duration
         state['start_time'] = datetime.now()
         state['is_running'] = True
@@ -191,7 +215,9 @@ def handle_stop_timer():
         return
 
     with rooms_lock:
-        state = get_or_create_room(room_id)
+        state = rooms.get(room_id)
+        if state is None:
+            return
         state['is_running'] = False
         state['start_time'] = None
         state['remaining_time'] = 0
@@ -208,7 +234,9 @@ def handle_pause_timer():
         return
 
     with rooms_lock:
-        state = get_or_create_room(room_id)
+        state = rooms.get(room_id)
+        if state is None:
+            return
         if not state['is_running']:
             return
 
@@ -232,7 +260,9 @@ def handle_resume_timer():
         return
 
     with rooms_lock:
-        state = get_or_create_room(room_id)
+        state = rooms.get(room_id)
+        if state is None:
+            return
         if state['is_running'] or state['remaining_time'] <= 0:
             return
 

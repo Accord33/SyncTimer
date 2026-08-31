@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "app"))
 
-from app import app, cleanup_rooms, create_room, rooms, socketio  # noqa: E402
+from app import app, cleanup_rooms, create_room, new_room_state, rooms, socketio  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -102,5 +102,51 @@ def test_deleted_room_url_returns_not_found():
     cleanup_rooms()
 
     response = app.test_client().get(f"/room/{room_id}")
+
+    assert response.status_code == 404
+
+
+def test_timer_duration_is_limited_to_24_hours():
+    room_id = create_room()
+    client = socketio.test_client(app, query_string=f"room_id={room_id}")
+    client.get_received()
+
+    client.emit("start_timer", {"minutes": 1440, "seconds": 1})
+    events = client.get_received()
+
+    assert any(event["name"] == "timer_error" for event in events)
+    assert rooms[room_id]["is_running"] is False
+    client.disconnect()
+
+
+def test_invalid_timer_duration_is_rejected_without_exception():
+    room_id = create_room()
+    client = socketio.test_client(app, query_string=f"room_id={room_id}")
+    client.get_received()
+
+    client.emit("start_timer", {"minutes": "not-a-number", "seconds": 0})
+    events = client.get_received()
+
+    assert any(event["name"] == "timer_error" for event in events)
+    assert rooms[room_id]["is_running"] is False
+    client.disconnect()
+
+
+def test_timer_event_does_not_recreate_deleted_room():
+    room_id = create_room()
+    client = socketio.test_client(app, query_string=f"room_id={room_id}")
+    client.get_received()
+    del rooms[room_id]
+
+    client.emit("stop_timer")
+
+    assert room_id not in rooms
+    client.disconnect()
+
+
+def test_malformed_room_id_is_not_served():
+    rooms["not-a-generated-room-id"] = new_room_state()
+
+    response = app.test_client().get("/room/not-a-generated-room-id")
 
     assert response.status_code == 404
