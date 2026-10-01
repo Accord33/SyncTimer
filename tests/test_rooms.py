@@ -36,6 +36,14 @@ def test_room_page_contains_its_room_id():
     assert room_id.encode() in response.data
 
 
+def test_healthz_does_not_create_a_timer_room():
+    response = app.test_client().get("/healthz")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok"}
+    assert rooms == {}
+
+
 def test_timer_events_are_isolated_between_rooms():
     room_a_id = create_room()
     room_b_id = create_room()

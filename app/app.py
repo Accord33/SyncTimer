@@ -126,6 +126,12 @@ timer_bg_thread = threading.Thread(target=timer_thread, daemon=True)
 timer_bg_thread.start()
 
 
+@app.get('/healthz')
+def healthz():
+    """Kubernetesなどの死活監視用エンドポイント。部屋は作成しない。"""
+    return {'status': 'ok'}
+
+
 @app.route('/')
 def index():
     """トップページを新しい共有タイマーへ転送する。"""
