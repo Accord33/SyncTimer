@@ -61,10 +61,13 @@ jobs:
           sudo systemctl restart docker
 
       - name: Login to Harbor
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
         run: |
-          echo "${{ secrets.HARBOR_PASSWORD }}" | \
+          printf '%s' "$HARBOR_PASSWORD" | \
             docker login harbor.accordlab \
-              -u "${{ secrets.HARBOR_USERNAME }}" \
+              -u "$HARBOR_USERNAME" \
               --password-stdin
 
       - name: Build and push immutable image
