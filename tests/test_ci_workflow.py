@@ -13,6 +13,7 @@ def test_publish_workflow_requires_tests_and_pushes_an_immutable_sha_tag():
     assert "pytest -q" in workflow
     assert "sha-${{ github.sha }}" in workflow
     assert "docker push \"${HARBOR_IMAGE}:${IMAGE_TAG}\"" in workflow
+    assert "HARBOR_IMAGE: harbor.accordlab/synctimer/synctimer" in workflow
     assert ":latest" not in workflow
 
 

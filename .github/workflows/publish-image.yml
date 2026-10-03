@@ -11,7 +11,7 @@ permissions:
 
 env:
   HARBOR_HOST: harbor.accordlab
-  HARBOR_IMAGE: harbor.accordlab/apps/synctimer
+  HARBOR_IMAGE: harbor.accordlab/synctimer/synctimer
 
 jobs:
   test:
