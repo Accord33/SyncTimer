@@ -67,3 +67,5 @@ def test_documentation_explains_copy_and_reusable_workflow_patterns():
     assert "TAILSCALE_OAUTH_CLIENT_SECRET" in documentation
     assert "harbor.accordlab/<HARBOR_PROJECT>/<IMAGE_NAME>" in documentation
     assert "sha-<commit SHA>" in documentation
+    assert "Accord33/SyncTimer/.github/workflows/reusable-harbor-publish.yml@main" in documentation
+    assert "呼び出し元リポジトリ" in documentation

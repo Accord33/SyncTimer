@@ -2,7 +2,7 @@
 
 ## 目的
 
-GitHub Actions の一時RunnerからTailscale経由で自宅Harborへ接続し、Dockerイメージをコミット単位の不変タグでpushするための、コピー利用前提の手順です。
+GitHub Actions の一時RunnerからTailscale経由で自宅Harborへ接続し、Dockerイメージをコミット単位の不変タグでpushする再利用workflowと、コピー用テンプレートの手順です。
 
 このリポジトリで確認済みの経路は次です。
 
@@ -15,7 +15,9 @@ GitHub Actions Runner
 
 Kubernetesへの反映はこのテンプレートの責務に含めません。イメージpushの成功を独立して確認してから、別のデプロイ手順で利用します。
 
-## すぐ使う手順
+## コピーして単体利用する場合
+
+別リポジトリから共通workflowを呼び出す方法は、後述の「他リポジトリから利用する」を参照してください。対象リポジトリへworkflow一式をコピーし、そのリポジトリで独立管理したい場合は、以下を使います。
 
 1. 対象リポジトリへ [`templates/github-actions/publish-harbor-image.yml`](../templates/github-actions/publish-harbor-image.yml) を `.github/workflows/publish-harbor-image.yml` としてコピーします。
 2. 次の値を対象プロジェクト用に置換します。
@@ -36,16 +38,24 @@ Kubernetesへの反映はこのテンプレートの責務に含めません。�
 4. GitHub Secretsを設定し、まず `workflow_dispatch` で1回実行します。
 5. ログの `Published image:` が期待する `sha-<commit SHA>` タグを示すことを確認します。
 
-## 別の workflow から呼び出す
+## 他リポジトリから利用する
 
-`.github/workflows/reusable-harbor-publish.yml` は `workflow_call` に対応した再利用 workflow です。呼び出し元ではテスト後の job として指定できます。
+`.github/workflows/reusable-harbor-publish.yml` は GitHub Actions の `workflow_call` 再利用ワークフローです。対象リポジトリへコピーせず、SyncTimer リポジトリから直接呼び出せます。SyncTimerリポジトリは公開設定です。GitHubでは公開workflowは公開／非公開いずれの呼び出し元からも利用できますが、公開リポジトリの呼び出し元は公開workflowのみ利用可能です。呼び出し元リポジトリのActionsポリシーで公開workflowが制限されている場合は、`Accord33/SyncTimer` を許可してください。詳細はGitHub公式の[再利用workflow説明](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)と[リポジトリ設定](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)を参照してください。
 
-同一リポジトリの場合：
+呼び出し元リポジトリの `.github/workflows/build-and-publish.yml` に、次のjobを追加します。PRが `main` にマージされた後は、まず `@main` を指定して利用できます。安定運用では、確認済みの完全なcommit SHAへ固定してください。
 
 ```yaml
+jobs:
+  test:
+    # 呼び出し元プロジェクト自身のテストをここで実行
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./run-tests.sh
+
   publish:
     needs: test
-    uses: ./.github/workflows/reusable-harbor-publish.yml
+    uses: Accord33/SyncTimer/.github/workflows/reusable-harbor-publish.yml@main
     with:
       harbor_host: harbor.accordlab
       image_repository: my-project/my-image
@@ -59,7 +69,14 @@ Kubernetesへの反映はこのテンプレートの責務に含めません。�
       HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
 ```
 
-別リポジトリから呼ぶ場合は `uses` を `Accord33/SyncTimer/.github/workflows/reusable-harbor-publish.yml@<確認済みref>` にします。`@main` は更新で挙動が変わり得るため、継続運用では確認済みのタグまたは commit SHA に固定してください。呼び出し元にも上記5つのSecretsが必要です。`image_repository` は `<Harbor project>/<image name>` の形式で、Harbor側にプロジェクトを先に作成してください。
+呼び出し元で必要な準備：
+
+1. GitHub Actions の設定で、公開リポジトリのActions／再利用workflowを許可する（Organizationのポリシーが優先される場合があります）。
+2. 呼び出し元リポジトリのActions secrets、またはそのリポジトリに公開したOrganization secretsへ、表記の5つのSecretsを登録する。
+3. `harbor_host` と `image_repository` を指定する。`image_repository` は `<Harbor project>/<image name>` 形式であり、Harborプロジェクトを先に作成してCIロボットアカウントへpush権限を付ける。
+4. 呼び出し元リポジトリのルートに `Dockerfile` を置く。再利用workflowは呼び出し元リポジトリをcheckoutし、そのルートをDocker build contextとして使う。
+
+イメージタグの `github.sha` は呼び出し元のcommit SHAです。公開先は `<harbor_host>/<image_repository>:sha-<呼び出し元commit SHA>` になります。
 
 ## 前提条件
 

@@ -107,12 +107,12 @@ SyncTimerは、WebSocketを使用したリアルタイム共有タイマーア�
 | `SECRET_KEY` | Flask秘密鍵 | `timer_secret_key` |
 | `PORT` | アプリケーションポート | `8000` |
 
-## Harborイメージ公開テンプレート
+## 他リポジトリ向け Harbor 公開 workflow
 
-GitHub ActionsからTailscale経由で自宅Harborへ不変タグ付きイメージをpushする、コピー利用向けのテンプレートと手順を用意しています。
+SyncTimerリポジトリが提供する再利用可能な GitHub Actions workflow と、コピー利用できるスタンドアロン例をまとめています。
 
-- 手順・必要なGitHub Secrets・障害切り分け：[Harbor GitHub Actions再利用ガイド](docs/harbor-github-actions.md)
-- コピー元ワークフロー：[publish-harbor-image.yml](templates/github-actions/publish-harbor-image.yml)
+- 他リポジトリから呼び出す手順・Secrets・障害切り分け：[Harbor GitHub Actions再利用ガイド](docs/harbor-github-actions.md)
+- コピーして使うworkflow：[publish-harbor-image.yml](templates/github-actions/publish-harbor-image.yml)
 
 ## Docker Compose コマンド
 
