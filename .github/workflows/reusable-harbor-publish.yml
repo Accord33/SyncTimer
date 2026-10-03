@@ -1,0 +1,88 @@
+name: Reusable Harbor image publisher
+
+on:
+  workflow_call:
+    inputs:
+      harbor_host:
+        description: Harbor hostname reachable over Tailscale
+        required: true
+        type: string
+      image_repository:
+        description: Harbor project and image path, without tag
+        required: true
+        type: string
+      tailscale_tags:
+        description: Tailscale ACL tag assigned to the GitHub Actions runner
+        required: false
+        default: tag:ci
+        type: string
+      platform:
+        description: Docker buildx target platform
+        required: false
+        default: linux/amd64
+        type: string
+    secrets:
+      TAILSCALE_OAUTH_CLIENT_ID:
+        required: true
+      TAILSCALE_OAUTH_CLIENT_SECRET:
+        required: true
+      HARBOR_IP:
+        required: true
+      HARBOR_USERNAME:
+        required: true
+      HARBOR_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and push immutable image
+    runs-on: ubuntu-latest
+    env:
+      HARBOR_HOST: ${{ inputs.harbor_host }}
+      IMAGE: ${{ inputs.harbor_host }}/${{ inputs.image_repository }}
+      IMAGE_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          tags: ${{ inputs.tailscale_tags }}
+
+      - name: Add Harbor host mapping
+        env:
+          HARBOR_IP: ${{ secrets.HARBOR_IP }}
+        run: printf '%s %s\n' "$HARBOR_IP" "$HARBOR_HOST" | sudo tee -a /etc/hosts
+
+      - name: Configure Docker for insecure registry
+        run: |
+          printf '{"insecure-registries":["%s"]}\n' "$HARBOR_HOST" | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      - name: Login to Harbor
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          printf '%s' "$HARBOR_PASSWORD" | \
+            docker login "$HARBOR_HOST" \
+              -u "$HARBOR_USERNAME" \
+              --password-stdin
+
+      - name: Build and push immutable image
+        env:
+          BUILD_PLATFORM: ${{ inputs.platform }}
+        run: |
+          docker buildx build \
+            --platform "$BUILD_PLATFORM" \
+            --load \
+            --tag "$IMAGE:$IMAGE_TAG" \
+            .
+          docker push "$IMAGE:$IMAGE_TAG"
+          echo "Published image: $IMAGE:$IMAGE_TAG"

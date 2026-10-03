@@ -1,40 +1,47 @@
 from pathlib import Path
 
 
-WORKFLOW = Path(__file__).parents[1] / ".github" / "workflows" / "publish-image.yml"
+ROOT = Path(__file__).parents[1]
+WORKFLOW = ROOT / ".github" / "workflows" / "publish-image.yml"
+REUSABLE = ROOT / ".github" / "workflows" / "reusable-harbor-publish.yml"
+TEMPLATE = ROOT / "templates" / "github-actions" / "publish-harbor-image.yml"
+DOC = ROOT / "docs" / "harbor-github-actions.md"
 
 
-def test_publish_workflow_requires_tests_and_pushes_an_immutable_sha_tag():
+def test_project_workflow_runs_tests_before_calling_reusable_publisher():
     workflow = WORKFLOW.read_text(encoding="utf-8")
-
-    assert "branches:" in workflow
     assert "- main" in workflow
-    assert "needs: test" in workflow
     assert "pytest -q" in workflow
+    assert "needs: test" in workflow
+    assert "uses: ./.github/workflows/reusable-harbor-publish.yml" in workflow
+    assert "harbor.accordlab" in workflow
+    assert "synctimer/synctimer" in workflow
+
+
+def test_reusable_workflow_accepts_configuration_and_pushes_immutable_sha_tag():
+    workflow = REUSABLE.read_text(encoding="utf-8")
+    assert "workflow_call:" in workflow
+    assert "harbor_host:" in workflow
+    assert "image_repository:" in workflow
+    assert "HARBOR_IP:" in workflow
+    assert "TAILSCALE_OAUTH_CLIENT_ID:" in workflow
+    assert "HARBOR_USERNAME:" in workflow
+    assert "HARBOR_PASSWORD:" in workflow
     assert "sha-${{ github.sha }}" in workflow
-    assert "docker push \"${HARBOR_IMAGE}:${IMAGE_TAG}\"" in workflow
-    assert "HARBOR_IMAGE: harbor.accordlab/synctimer/synctimer" in workflow
-    assert ":latest" not in workflow
+    assert 'docker push "$IMAGE:$IMAGE_TAG"' in workflow
 
 
-def test_publish_workflow_uses_the_media_server_tailscale_harbor_connection_pattern():
-    workflow = WORKFLOW.read_text(encoding="utf-8")
-
+def test_reusable_workflow_uses_tailscale_and_safe_docker_login():
+    workflow = REUSABLE.read_text(encoding="utf-8")
     assert "tailscale/github-action@v2" in workflow
-    assert "tags: tag:ci" in workflow
-    assert "HARBOR_IP" in workflow
-    assert '"insecure-registries": ["harbor.accordlab"]' in workflow
-    assert "docker login harbor.accordlab" in workflow
+    assert "tags: ${{ inputs.tailscale_tags }}" in workflow
+    assert "insecure-registries" in workflow
+    assert 'printf \'%s\' "$HARBOR_PASSWORD"' in workflow
+    assert '"$HARBOR_USERNAME"' in workflow
 
 
-def test_harbor_publish_template_keeps_the_verified_connection_and_tagging_pattern():
-    template = (
-        Path(__file__).parents[1]
-        / "templates"
-        / "github-actions"
-        / "publish-harbor-image.yml"
-    ).read_text(encoding="utf-8")
-
+def test_copyable_template_keeps_verified_connection_and_tagging_pattern():
+    template = TEMPLATE.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in template
     assert "tailscale/github-action@v2" in template
     assert "tags: tag:ci" in template
@@ -44,16 +51,15 @@ def test_harbor_publish_template_keeps_the_verified_connection_and_tagging_patte
     assert "printf '%s' \"$HARBOR_PASSWORD\"" in template
     assert "HARBOR_IMAGE: harbor.accordlab/<HARBOR_PROJECT>/<IMAGE_NAME>" in template
     assert "sha-${{ github.sha }}" in template
-    assert "docker push \"${HARBOR_IMAGE}:${IMAGE_TAG}\"" in template
+    assert 'docker push "${HARBOR_IMAGE}:${IMAGE_TAG}"' in template
     assert ":latest" not in template
 
 
-def test_harbor_publish_documentation_lists_reusable_template_and_required_secrets():
-    documentation = (
-        Path(__file__).parents[1] / "docs" / "harbor-github-actions.md"
-    ).read_text(encoding="utf-8")
-
+def test_documentation_explains_copy_and_reusable_workflow_patterns():
+    documentation = DOC.read_text(encoding="utf-8")
     assert "templates/github-actions/publish-harbor-image.yml" in documentation
+    assert ".github/workflows/reusable-harbor-publish.yml" in documentation
+    assert "workflow_call" in documentation
     assert "HARBOR_IP" in documentation
     assert "HARBOR_USERNAME" in documentation
     assert "HARBOR_PASSWORD" in documentation

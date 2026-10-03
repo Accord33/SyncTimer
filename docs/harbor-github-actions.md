@@ -36,6 +36,31 @@ Kubernetesへの反映はこのテンプレートの責務に含めません。�
 4. GitHub Secretsを設定し、まず `workflow_dispatch` で1回実行します。
 5. ログの `Published image:` が期待する `sha-<commit SHA>` タグを示すことを確認します。
 
+## 別の workflow から呼び出す
+
+`.github/workflows/reusable-harbor-publish.yml` は `workflow_call` に対応した再利用 workflow です。呼び出し元ではテスト後の job として指定できます。
+
+同一リポジトリの場合：
+
+```yaml
+  publish:
+    needs: test
+    uses: ./.github/workflows/reusable-harbor-publish.yml
+    with:
+      harbor_host: harbor.accordlab
+      image_repository: my-project/my-image
+      tailscale_tags: tag:ci
+      platform: linux/amd64
+    secrets:
+      TAILSCALE_OAUTH_CLIENT_ID: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+      TAILSCALE_OAUTH_CLIENT_SECRET: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+      HARBOR_IP: ${{ secrets.HARBOR_IP }}
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+```
+
+別リポジトリから呼ぶ場合は `uses` を `Accord33/SyncTimer/.github/workflows/reusable-harbor-publish.yml@<確認済みref>` にします。`@main` は更新で挙動が変わり得るため、継続運用では確認済みのタグまたは commit SHA に固定してください。呼び出し元にも上記5つのSecretsが必要です。`image_repository` は `<Harbor project>/<image name>` の形式で、Harbor側にプロジェクトを先に作成してください。
+
 ## 前提条件
 
 ### Harbor
