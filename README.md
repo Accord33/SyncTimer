@@ -14,6 +14,7 @@
 - [使用技術](#使用技術)
 - [開発環境構築方法](#開発環境構築方法)
 - [環境変数とコマンド一覧](#環境変数とコマンド一覧)
+- [Harborイメージ公開テンプレート](#harborイメージ公開テンプレート)
 - [ディレクトリ構成](#ディレクトリ構成)
 - [トラブルシューティング](#トラブルシューティング)
 
@@ -106,7 +107,14 @@ SyncTimerは、WebSocketを使用したリアルタイム共有タイマーア�
 | `SECRET_KEY` | Flask秘密鍵 | `timer_secret_key` |
 | `PORT` | アプリケーションポート | `8000` |
 
-### Docker Compose コマンド
+## Harborイメージ公開テンプレート
+
+GitHub ActionsからTailscale経由で自宅Harborへ不変タグ付きイメージをpushする、コピー利用向けのテンプレートと手順を用意しています。
+
+- 手順・必要なGitHub Secrets・障害切り分け：[Harbor GitHub Actions再利用ガイド](docs/harbor-github-actions.md)
+- コピー元ワークフロー：[publish-harbor-image.yml](templates/github-actions/publish-harbor-image.yml)
+
+## Docker Compose コマンド
 
 ```bash
 # アプリケーションの起動
