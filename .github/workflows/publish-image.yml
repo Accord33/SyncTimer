@@ -78,6 +78,12 @@ jobs:
             --platform linux/amd64 \
             --load \
             --tag "${HARBOR_IMAGE}:${IMAGE_TAG}" \
+            --tag "${HARBOR_IMAGE}:latest" \
             .
           docker push "${HARBOR_IMAGE}:${IMAGE_TAG}"
           echo "Published image: ${HARBOR_IMAGE}:${IMAGE_TAG}"
+
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            docker push "${HARBOR_IMAGE}:latest"
+            echo "Published image: ${HARBOR_IMAGE}:latest"
+          fi
